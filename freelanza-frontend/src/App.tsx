@@ -12,23 +12,28 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
 // Public Pages
-// These will be implemented later
-const Home = () => <div className="p-8 text-center">Ana Sayfa - Yakında</div>;
-const Jobs = () => <div className="p-8 text-center">İş İlanları - Yakında</div>;
-const Freelancers = () => <div className="p-8 text-center">Freelancerlar - Yakında</div>;
-const HowItWorks = () => <div className="p-8 text-center">Nasıl Çalışır - Yakında</div>;
+import Home from './pages/Home';
+import Jobs from './pages/Jobs';
+import JobDetail from './pages/JobDetail';
 
 // Protected Pages
-// These will be implemented later
-const Dashboard = () => <div className="p-8 text-center">Dashboard - Yakında</div>;
+import Dashboard from './pages/Dashboard';
+import JobApply from './pages/JobApply';
+import Profile from './pages/Profile';
+import Messages from './pages/Messages';
+import Payments from './pages/Payments';
+
+// Sayfalar oluşturulduğunda import edilecek
+const Freelancers = () => <div className="p-8 text-center">Freelancerlar - Yakında</div>;
+const HowItWorks = () => <div className="p-8 text-center">Nasıl Çalışır - Yakında</div>;
 const Unauthorized = () => <div className="p-8 text-center">Yetkisiz Erişim</div>;
 
 // Create a client for React Query
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1,
+      staleTime: 1000 * 60 * 5, // 5 dakika
     },
   },
 });
@@ -40,92 +45,68 @@ const App: React.FC = () => {
         <AuthProvider>
           <Routes>
             {/* Public Routes */}
-            <Route
-              path="/"
-              element={
-                <Layout>
-                  <Home />
-                </Layout>
-              }
-            />
-            <Route
-              path="/login"
-              element={
-                <Layout hideFooter>
-                  <Login />
-                </Layout>
-              }
-            />
-            <Route
-              path="/register"
-              element={
-                <Layout hideFooter>
-                  <Register />
-                </Layout>
-              }
-            />
-            <Route
-              path="/forgot-password"
-              element={
-                <Layout hideFooter>
-                  <ForgotPassword />
-                </Layout>
-              }
-            />
-            <Route
-              path="/reset-password"
-              element={
-                <Layout hideFooter>
-                  <ResetPassword />
-                </Layout>
-              }
-            />
-            <Route
-              path="/jobs"
-              element={
-                <Layout>
-                  <Jobs />
-                </Layout>
-              }
-            />
-            <Route
-              path="/freelancers"
-              element={
-                <Layout>
-                  <Freelancers />
-                </Layout>
-              }
-            />
-            <Route
-              path="/how-it-works"
-              element={
-                <Layout>
-                  <HowItWorks />
-                </Layout>
-              }
-            />
-            <Route
-              path="/unauthorized"
-              element={
-                <Layout>
-                  <Unauthorized />
-                </Layout>
-              }
-            />
+            <Route path="/" element={<Home />} />
+            <Route path="/jobs" element={<Jobs />} />
+            <Route path="/jobs/:id" element={<JobDetail />} />
+            <Route path="/freelancers" element={<Freelancers />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
+
+            {/* Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected Routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route
-                path="/dashboard"
-                element={
-                  <Layout>
-                    <Dashboard />
-                  </Layout>
-                }
-              />
-            </Route>
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/jobs/:id/apply"
+              element={
+                <ProtectedRoute>
+                  <JobApply />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/:id"
+              element={<Profile />}
+            />
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute>
+                  <Messages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payments"
+              element={
+                <ProtectedRoute>
+                  <Payments />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Catch all route */}
+            {/* Unauthorized Route */}
+            <Route path="/unauthorized" element={<Unauthorized />} />
+
+            {/* Fallback Route */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>

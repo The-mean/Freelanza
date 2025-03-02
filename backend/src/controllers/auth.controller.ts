@@ -10,15 +10,15 @@ const prisma = new PrismaClient();
 
 // JWT token üretme
 const generateToken = (id: string): string => {
-    return jwt.sign({ id }, process.env.JWT_SECRET as string, {
-        expiresIn: process.env.JWT_EXPIRES_IN,
+    return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', {
+        expiresIn: process.env.JWT_EXPIRES_IN || '1h',
     });
 };
 
 // Refresh token üretme
 const generateRefreshToken = (id: string): string => {
-    return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET as string, {
-        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
+    return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET || 'refresh-secret', {
+        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
     });
 };
 

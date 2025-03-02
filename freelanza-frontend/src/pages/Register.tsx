@@ -6,10 +6,11 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 
 const Register: React.FC = () => {
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [role, setRole] = useState<'FREELANCER' | 'CLIENT'>('FREELANCER');
+    const [role, setRole] = useState<'freelancer' | 'client'>('freelancer');
     const [formError, setFormError] = useState('');
     const { register, isLoading, error } = useAuthContext();
     const navigate = useNavigate();
@@ -19,28 +20,33 @@ const Register: React.FC = () => {
         setFormError('');
 
         // Simple validation
+        if (!name.trim()) {
+            setFormError('İsim gereklidir');
+            return;
+        }
+
         if (!email.trim()) {
-            setFormError('Email is required');
+            setFormError('Email gereklidir');
             return;
         }
 
         if (!password) {
-            setFormError('Password is required');
+            setFormError('Şifre gereklidir');
             return;
         }
 
         if (password.length < 8) {
-            setFormError('Password must be at least 8 characters');
+            setFormError('Şifre en az 8 karakter olmalıdır');
             return;
         }
 
         if (password !== confirmPassword) {
-            setFormError('Passwords do not match');
+            setFormError('Şifreler eşleşmiyor');
             return;
         }
 
         try {
-            await register({ email, password, role });
+            await register({ name, email, password, role });
             navigate('/dashboard');
         } catch (err) {
             // Error is handled by the useAuth hook and displayed via the error state
@@ -69,6 +75,20 @@ const Register: React.FC = () => {
                                 {formError || error}
                             </div>
                         )}
+
+                        <div>
+                            <Input
+                                label="Ad Soyad"
+                                type="text"
+                                id="name"
+                                name="name"
+                                autoComplete="name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                                placeholder="Adınız Soyadınız"
+                            />
+                        </div>
 
                         <div>
                             <Input
@@ -120,21 +140,21 @@ const Register: React.FC = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <button
                                     type="button"
-                                    className={`py-2 px-4 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${role === 'FREELANCER'
-                                            ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                            : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
+                                    className={`py-2 px-4 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${role === 'freelancer'
+                                        ? 'bg-primary-50 border-primary-500 text-primary-700'
+                                        : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
                                         }`}
-                                    onClick={() => setRole('FREELANCER')}
+                                    onClick={() => setRole('freelancer')}
                                 >
                                     Freelancer
                                 </button>
                                 <button
                                     type="button"
-                                    className={`py-2 px-4 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${role === 'CLIENT'
-                                            ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                            : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
+                                    className={`py-2 px-4 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${role === 'client'
+                                        ? 'bg-primary-50 border-primary-500 text-primary-700'
+                                        : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
                                         }`}
-                                    onClick={() => setRole('CLIENT')}
+                                    onClick={() => setRole('client')}
                                 >
                                     İşveren
                                 </button>

@@ -1,5 +1,4 @@
 import React from 'react';
-import Image from 'next/image';
 import Head from 'next/head';
 import Link from 'next/link';
 
@@ -55,8 +54,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Freelanza - Türkiye'nin Freelancer Platformu</title>
-        <meta name="description" content="Freelanza ile yeteneklerini paylaş, projelerini büyüt. Türkiye'nin en güvenilir freelancer platformu." />
+        <title>Freelanza - Türkiye&apos;nin Freelancer Platformu</title>
+        <meta name="description" content="Freelanza ile yeteneklerini paylaş, projelerini büyüt. Türkiye&apos;nin en güvenilir freelancer platformu." />
       </Head>
 
       {/* Hero Section */}
@@ -68,7 +67,7 @@ export default function Home() {
                 Yeteneğinle <span className="text-primary">Özgürce</span> Çalış
               </h1>
               <p className="text-lg text-gray-600 mb-8">
-                Türkiye'nin en güvenilir freelancer platformunda iş veren ve yetenekli freelancerları buluşturuyoruz. Hemen ücretsiz profil oluştur ve teklifler almaya başla.
+                Türkiye&apos;nin en güvenilir freelancer platformunda iş veren ve yetenekli freelancerları buluşturuyoruz. Hemen ücretsiz profil oluştur ve teklifler almaya başla.
               </p>
 
               {/* Search Box */}
@@ -158,11 +157,11 @@ export default function Home() {
       <section className="py-16 bg-pastel-lilac/30">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-gray-800 mb-6">
-            Hemen Freelanza'ya Katıl
+            Hemen Freelanza&apos;ya Katıl
           </h2>
           <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
             İster yeni projeler bul, ister hayalindeki takımı kur.
-            Türkiye'nin en güvenilir freelance platformunda yerini al.
+            Türkiye&apos;nin en güvenilir freelance platformunda yerini al.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register?type=client" className="btn-primary">

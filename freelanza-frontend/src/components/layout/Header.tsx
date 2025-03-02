@@ -4,7 +4,7 @@ import { useAuthContext } from '../../context/AuthContext';
 import Button from '../ui/Button';
 
 const Header: React.FC = () => {
-    const { isAuthenticated, user, logout } = useAuthContext();
+    const { isAuthenticated, logout } = useAuthContext();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
 

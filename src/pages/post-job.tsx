@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 
 // Örnek kategoriler
 const categories = [
@@ -286,7 +285,7 @@ const PostJob = () => {
                                                         Dosyaları buraya sürükleyin veya göz atın
                                                     </span>
                                                     <span className="mt-1 block text-xs text-gray-500">
-                                                        En fazla 5 dosya, her biri 10MB'dan küçük olmalı
+                                                        En fazla 5 dosya, her biri 10MB&apos;dan küçük olmalı
                                                     </span>
                                                 </label>
                                             </div>
@@ -395,7 +394,7 @@ const PostJob = () => {
                                                             Doğrudan Ödeme
                                                         </span>
                                                         <span className="text-sm text-gray-600">
-                                                            Ödemenizi doğrudan freelancer'a yaparsınız. Daha az güvenli bir seçenektir.
+                                                            Ödemenizi doğrudan freelancer&apos;a yaparsınız. Daha az güvenli bir seçenektir.
                                                         </span>
                                                     </div>
                                                 </label>
@@ -408,7 +407,7 @@ const PostJob = () => {
                                                 <li>İlanınız tüm ilgili freelancerlara bildirilecek</li>
                                                 <li>Teklifler aldıkça size e-posta ile bildirilecek</li>
                                                 <li>Teklifleri inceleyin ve iletişime geçin</li>
-                                                <li>En uygun freelancer'ı seçin ve projeye başlayın</li>
+                                                <li>En uygun freelancer&apos;ı seçin ve projeye başlayın</li>
                                             </ul>
                                         </div>
                                     </div>

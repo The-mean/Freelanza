@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import authService, { LoginCredentials, RegisterData } from '../services/authService';
-
-interface User {
-    id: string;
-    email: string;
-    role: string;
-}
+import { authService, userService } from '../services/api';
+import { User, LoginCredentials, RegisterData } from '../types';
+import { useMutation } from './useMutation';
+import { useQuery } from './useQuery';
+import { queryClient } from '../App';
 
 interface UseAuthReturn {
     user: User | null;
@@ -14,98 +12,102 @@ interface UseAuthReturn {
     error: string | null;
     login: (credentials: LoginCredentials) => Promise<void>;
     register: (data: RegisterData) => Promise<void>;
-    logout: () => Promise<void>;
+    logout: () => void;
     isAuthenticated: boolean;
 }
 
 export const useAuth = (): UseAuthReturn => {
-    const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(authService.isAuthenticated());
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+        localStorage.getItem('token') !== null
+    );
     const navigate = useNavigate();
 
-    const fetchCurrentUser = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            const userData = await authService.getCurrentUser();
-            setUser(userData);
-            setIsAuthenticated(!!userData);
-        } catch (err) {
-            setUser(null);
-            setIsAuthenticated(false);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+    // Kullanıcı bilgilerini çekme
+    const {
+        data: user,
+        isLoading: isUserLoading,
+        error: userError,
+        refetch: refetchUser
+    } = useQuery<User | null, Error>(
+        ['currentUser'],
+        async () => {
+            if (!isAuthenticated) return null;
 
-    useEffect(() => {
-        if (authService.isAuthenticated()) {
-            fetchCurrentUser();
-        } else {
-            setIsLoading(false);
-        }
-    }, [fetchCurrentUser]);
-
-    const login = async (credentials: LoginCredentials) => {
-        try {
-            setIsLoading(true);
-            setError(null);
-            const response = await authService.login(credentials);
-            authService.saveTokens(response.accessToken, response.refreshToken);
-            setUser(response.user);
-            setIsAuthenticated(true);
-            navigate('/dashboard');
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed. Please try again.');
-            throw err;
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const register = async (data: RegisterData) => {
-        try {
-            setIsLoading(true);
-            setError(null);
-            const response = await authService.register(data);
-            authService.saveTokens(response.accessToken, response.refreshToken);
-            setUser(response.user);
-            setIsAuthenticated(true);
-            navigate('/dashboard');
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Registration failed. Please try again.');
-            throw err;
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const logout = async () => {
-        try {
-            setIsLoading(true);
-            const refreshToken = authService.getRefreshToken();
-            if (refreshToken) {
-                await authService.logout(refreshToken);
+            try {
+                // API'den kullanıcı bilgilerini çekiyoruz
+                return await userService.getCurrentUser();
+            } catch (error) {
+                setIsAuthenticated(false);
+                localStorage.removeItem('token');
+                localStorage.removeItem('refreshToken');
+                return null;
             }
-            setUser(null);
-            setIsAuthenticated(false);
-            navigate('/login');
-        } catch (err) {
-            console.error('Logout error:', err);
-        } finally {
-            setIsLoading(false);
+        },
+        {
+            enabled: isAuthenticated,
+            retry: false
         }
+    );
+
+    // Login işlemi için mutation
+    const loginMutation = useMutation(authService.login, {
+        onSuccess: (data) => {
+            setIsAuthenticated(true);
+            // Kullanıcı bilgilerini yeniden çekme
+            queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+            navigate('/dashboard');
+        },
+        onError: () => {
+            setIsAuthenticated(false);
+        }
+    });
+
+    // Register işlemi için mutation
+    const registerMutation = useMutation(authService.register, {
+        onSuccess: (data) => {
+            setIsAuthenticated(true);
+            // Kullanıcı bilgilerini yeniden çekme
+            queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+            navigate('/dashboard');
+        },
+        onError: () => {
+            setIsAuthenticated(false);
+        }
+    });
+
+    // Login metodu
+    const login = async (credentials: LoginCredentials) => {
+        await loginMutation.mutateAsync(credentials);
     };
+
+    // Register metodu
+    const register = async (data: RegisterData) => {
+        await registerMutation.mutateAsync(data);
+    };
+
+    // Logout metodu
+    const logout = () => {
+        authService.logout();
+        setIsAuthenticated(false);
+        queryClient.clear();
+        navigate('/login');
+    };
+
+    // Token değişirse kullanıcı bilgilerini yeniden çekme
+    useEffect(() => {
+        if (isAuthenticated) {
+            refetchUser();
+        }
+    }, [isAuthenticated, refetchUser]);
 
     return {
-        user,
-        isLoading,
-        error,
+        user: user || null,
+        isLoading: isUserLoading || loginMutation.isPending || registerMutation.isPending,
+        error: userError?.message || loginMutation.error?.message || registerMutation.error?.message || null,
         login,
         register,
         logout,
-        isAuthenticated,
+        isAuthenticated
     };
 };
 

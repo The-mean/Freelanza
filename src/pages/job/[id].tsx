@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import Image from 'next/image';
 
 // Örnek iş ilanı verisi
 const jobData = {
@@ -51,10 +50,15 @@ Yapılacak İşler:
 
 const JobDetails = () => {
     const router = useRouter();
-    const { id } = router.query;
+    const { id = '1' } = router.query;
     const [showBidForm, setShowBidForm] = useState(false);
 
     // Gerçek uygulamada ID'ye göre veritabanından veri çekilir
+    // Bu örnekte id parametresi: ${id} yerine şu şekilde kullanılmalı:
+    console.log(`Job ID: ${id}`);
+
+    // Gerçek uygulamada ID'ye göre veritabanından veri çekilir
+    // Bu örnekte id parametresi: ${id}
     const job = jobData;
 
     return (

@@ -1,12 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import useAuth from '../hooks/useAuth';
-import { LoginCredentials, RegisterData } from '../services/authService';
-
-interface User {
-    id: string;
-    email: string;
-    role: string;
-}
+import { User, LoginCredentials, RegisterData } from '../types';
 
 interface AuthContextType {
     user: User | null;
@@ -14,7 +8,7 @@ interface AuthContextType {
     error: string | null;
     login: (credentials: LoginCredentials) => Promise<void>;
     register: (data: RegisterData) => Promise<void>;
-    logout: () => Promise<void>;
+    logout: () => void;
     isAuthenticated: boolean;
 }
 

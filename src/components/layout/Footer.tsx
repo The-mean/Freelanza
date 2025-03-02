@@ -10,7 +10,7 @@ const Footer = () => {
                     <div className="col-span-1 md:col-span-1">
                         <div className="font-bold text-xl text-primary mb-4">Freelanza</div>
                         <p className="text-gray-600 text-sm">
-                            Türkiye'nin en güvenilir freelancer platformu. Yeteneğini paylaş, işini büyüt.
+                            Türkiye&apos;nin en güvenilir freelancer platformu. Yeteneğini paylaş, işini büyüt.
                         </p>
                     </div>
 

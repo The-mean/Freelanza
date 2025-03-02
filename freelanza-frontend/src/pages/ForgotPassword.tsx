@@ -1,42 +1,58 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import authService from '../services/authService';
+import { authService } from '../services/api';
+import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
+import { useMutation } from '../hooks/useMutation';
 
 const ForgotPassword: React.FC = () => {
     const [email, setEmail] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [formError, setFormError] = useState('');
     const [success, setSuccess] = useState(false);
+
+    const forgotPasswordMutation = useMutation(
+        (email: string) => authService.forgotPassword(email),
+        {
+            onSuccess: () => {
+                setSuccess(true);
+            }
+        }
+    );
+
+    const validateForm = (): boolean => {
+        if (!email.trim()) {
+            setFormError('Email adresi zorunludur');
+            return false;
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+            setFormError('Geçerli bir email adresi giriniz');
+            return false;
+        }
+
+        setFormError('');
+        return true;
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-        setSuccess(false);
 
-        if (!email.trim()) {
-            setError('Email is required');
+        if (!validateForm()) {
             return;
         }
 
         try {
-            setIsLoading(true);
-            await authService.forgotPassword({ email });
-            setSuccess(true);
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'An error occurred. Please try again.');
-        } finally {
-            setIsLoading(false);
+            await forgotPasswordMutation.mutateAsync(email);
+        } catch (err) {
+            console.error('Forgot password error:', err);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4 py-12 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8">
-                <div className="text-center">
-                    <h2 className="mt-6 text-3xl font-extrabold text-neutral-900">
+        <Layout>
+            <div className="max-w-md mx-auto my-10 p-6">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-extrabold text-neutral-900">
                         Şifreni Sıfırla
                     </h2>
                     <p className="mt-2 text-sm text-neutral-600">
@@ -44,61 +60,68 @@ const ForgotPassword: React.FC = () => {
                     </p>
                 </div>
 
-                <Card className="mt-8">
+                <Card>
                     {success ? (
                         <div className="space-y-6">
-                            <div className="bg-success-50 border border-success-200 text-success-700 px-4 py-3 rounded-md text-sm">
-                                Şifre sıfırlama talimatları email adresine gönderildi. Lütfen gelen kutunu kontrol et.
+                            <div className="p-3 text-sm bg-green-50 text-green-700 rounded-md">
+                                Şifre sıfırlama bağlantısı email adresine gönderildi. Lütfen email kutunu kontrol et.
                             </div>
                             <div className="text-center">
-                                <Link to="/login">
-                                    <Button variant="primary">Giriş Sayfasına Dön</Button>
+                                <Link
+                                    to="/login"
+                                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                                >
+                                    Giriş Sayfasına Dön
                                 </Link>
                             </div>
                         </div>
                     ) : (
-                        <form className="space-y-6" onSubmit={handleSubmit}>
-                            {error && (
-                                <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-md text-sm">
-                                    {error}
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {(formError || forgotPasswordMutation.error) && (
+                                <div className="p-3 text-sm bg-red-50 text-red-500 rounded-md">
+                                    {formError || forgotPasswordMutation.error?.message || 'Bir hata oluştu. Lütfen tekrar deneyin.'}
                                 </div>
                             )}
 
                             <div>
+                                <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
+                                    Email Adresi
+                                </label>
                                 <Input
-                                    label="Email Adresi"
-                                    type="email"
                                     id="email"
-                                    name="email"
-                                    autoComplete="email"
+                                    type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    placeholder="ornek@email.com"
+                                    placeholder="Email adresinizi girin"
+                                    disabled={forgotPasswordMutation.isPending}
+                                    data-testid="email-input"
+                                    className="mt-1"
                                 />
                             </div>
 
                             <div>
                                 <Button
                                     type="submit"
+                                    variant="primary"
                                     fullWidth
-                                    isLoading={isLoading}
-                                    className="py-2.5"
+                                    isLoading={forgotPasswordMutation.isPending}
+                                    disabled={forgotPasswordMutation.isPending}
+                                    data-testid="forgot-password-button"
                                 >
-                                    Şifre Sıfırlama Bağlantısı Gönder
+                                    {forgotPasswordMutation.isPending ? 'Gönderiliyor...' : 'Sıfırlama Bağlantısı Gönder'}
                                 </Button>
                             </div>
 
                             <div className="text-center">
-                                <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
-                                    Giriş sayfasına dön
+                                <Link to="/login" className="text-sm font-medium text-primary-600 hover:text-primary-500">
+                                    Giriş Sayfasına Dön
                                 </Link>
                             </div>
                         </form>
                     )}
                 </Card>
             </div>
-        </div>
+        </Layout>
     );
 };
 

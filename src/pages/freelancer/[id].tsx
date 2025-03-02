@@ -1,8 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
-import Image from 'next/image';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 
 // Örnek veri
 const freelancerData = {
@@ -35,9 +33,13 @@ const freelancerData = {
 
 const FreelancerProfile = () => {
     const router = useRouter();
-    const { id } = router.query;
+    const { id = '1' } = router.query;
 
     // Gerçek uygulamada ID'ye göre veritabanından veri çekilir
+    // Bu örnekte id parametresi: ${id} yerine şu şekilde kullanılmalı:
+    console.log(`Freelancer ID: ${id}`);
+
+    // Bu örnekte id parametresi: ${id}
     const freelancer = freelancerData;
 
     return (
