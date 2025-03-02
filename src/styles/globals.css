@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @theme {
   --font-sans: var(--font-geist-sans);
@@ -23,7 +25,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-poppins), 'Inter', 'Montserrat', sans-serif;
+  font-family: 'Poppins', 'Inter', 'Montserrat', sans-serif;
 }
 
 @layer components {
