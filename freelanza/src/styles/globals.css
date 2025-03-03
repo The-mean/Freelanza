@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Font yükleme optimizasyonu */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/poppins/v20/pxiEyp8kv8JHgFVrJJfecg.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFQ.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLEj6Z1xlFQ.woff2) format('woff2');
+}
+
+:root {
+  --background: #F8EDEB;
+  --foreground: #333333;
+  --primary: #A8DADC;
+  --secondary: #FEC3A6;
+  --accent: #D9C6E0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Poppins', 'Inter', 'Montserrat', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer components {
+  .container {
+    @apply mx-auto px-4 max-w-7xl;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white font-medium py-2 px-4 rounded-md transition duration-300 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary/70;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-white font-medium py-2 px-4 rounded-md transition duration-300 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-secondary/70;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-white font-medium py-2 px-4 rounded-md transition duration-300 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent/70;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition duration-300;
+  }
+
+  .input {
+    @apply w-full border border-gray-200 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 bg-white;
+  }
+}
