@@ -15,6 +15,18 @@ interface ProfileFormData {
     portfolio_links: string[];
 }
 
+interface FreelancerProfile {
+    id: string;
+    user_id: string;
+    full_name: string;
+    title: string;
+    skills: string[];
+    hourly_rate: number;
+    description: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
 const EditProfilePage: React.FC = () => {
     const { data: session, status } = useSession();
     const router = useRouter();
@@ -119,9 +131,9 @@ const EditProfilePage: React.FC = () => {
                 .from('freelancer_profiles')
                 .select('id')
                 .eq('user_id', session.user.id)
-                .single();
+                .single() as { data: Pick<FreelancerProfile, 'id'> | null };
 
-            let result;
+            let result: { data: FreelancerProfile[] | null; error: any };
             if (existingProfile) {
                 // Profili güncelle
                 result = await supabase
@@ -154,7 +166,11 @@ const EditProfilePage: React.FC = () => {
             if (result.error) throw result.error;
 
             // Başarılı güncelleme sonrası profil sayfasına yönlendir
-            router.push(`/freelancers/${existingProfile?.id || result.data[0].id}`);
+            const profileId = existingProfile?.id || result.data?.[0]?.id;
+            if (!profileId) {
+                throw new Error('Profil ID bulunamadı');
+            }
+            router.push(`/freelancers/${profileId}`);
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Bir hata oluştu');
         } finally {

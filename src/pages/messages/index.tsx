@@ -1,291 +1,397 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/router';
-import { useSession } from 'next-auth/react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/router';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 
-interface Conversation {
-    id: string;
-    other_user: {
-        id: string;
-        name: string;
-        type: string;
-    };
-    last_message: string;
-    last_message_time: string;
-    unread_count: number;
-}
-
-interface Message {
-    id: string;
-    sender_id: string;
+// Mesaj tipi tanımı
+type Message = {
+    id: number;
+    senderId: number;
+    receiverId: number;
     content: string;
-    created_at: string;
-}
+    timestamp: string;
+    isRead: boolean;
+};
 
-const MessagesPage: React.FC = () => {
-    const { data: session, status } = useSession();
+// Kullanıcı tipi tanımı
+type User = {
+    id: number;
+    name: string;
+    avatar: string;
+    lastMessage?: string;
+    lastMessageTime?: string;
+    unreadCount?: number;
+    isOnline: boolean;
+};
+
+export default function Messages() {
     const router = useRouter();
-    const [conversations, setConversations] = useState<Conversation[]>([]);
-    const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [newMessage, setNewMessage] = useState('');
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [message, setMessage] = useState('');
+    const [contacts, setContacts] = useState<User[]>([]);
+    const [filteredContacts, setFilteredContacts] = useState<User[]>([]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const currentUserId = 1; // Giriş yapmış kullanıcının ID'si (normalde API'den gelir)
 
+    // Kimlik doğrulama kontrolü
     useEffect(() => {
-        const loadConversations = async () => {
-            if (session?.user) {
-                try {
-                    const { data, error: queryError } = await supabase
-                        .from('conversations')
-                        .select(`
-                            id,
-                            other_user:users!other_user_id (
-                                id,
-                                name,
-                                type
-                            ),
-                            last_message,
-                            last_message_time,
-                            unread_count
-                        `)
-                        .eq('user_id', session.user.id)
-                        .order('last_message_time', { ascending: false });
-
-                    if (queryError) throw queryError;
-                    setConversations(data || []);
-                } catch (err) {
-                    setError('Konuşmalar yüklenirken bir hata oluştu.');
-                    console.error('Error loading conversations:', err);
-                }
-            }
-            setIsLoading(false);
-        };
-
-        loadConversations();
-    }, [session]);
-
-    useEffect(() => {
-        const loadMessages = async () => {
-            if (selectedConversation) {
-                try {
-                    const { data, error: queryError } = await supabase
-                        .from('messages')
-                        .select('*')
-                        .eq('conversation_id', selectedConversation)
-                        .order('created_at', { ascending: true });
-
-                    if (queryError) throw queryError;
-                    setMessages(data || []);
-                    scrollToBottom();
-
-                    // Okunmamış mesajları okundu olarak işaretle
-                    await supabase
-                        .from('conversations')
-                        .update({ unread_count: 0 })
-                        .eq('id', selectedConversation)
-                        .eq('user_id', session?.user?.id);
-                } catch (err) {
-                    setError('Mesajlar yüklenirken bir hata oluştu.');
-                    console.error('Error loading messages:', err);
-                }
-            }
-        };
-
-        loadMessages();
-
-        // Gerçek zamanlı mesaj güncellemeleri için subscription
-        const subscription = supabase
-            .channel(`conversation:${selectedConversation}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messages',
-                filter: `conversation_id=eq.${selectedConversation}`
-            }, (payload) => {
-                setMessages(prev => [...prev, payload.new as Message]);
-                scrollToBottom();
-            })
-            .subscribe();
-
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, [selectedConversation, session]);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newMessage.trim() || !selectedConversation || !session?.user) return;
-
-        try {
-            const { error: insertError } = await supabase
-                .from('messages')
-                .insert([{
-                    conversation_id: selectedConversation,
-                    sender_id: session.user.id,
-                    content: newMessage.trim()
-                }]);
-
-            if (insertError) throw insertError;
-
-            // Konuşmanın son mesajını güncelle
-            await supabase
-                .from('conversations')
-                .update({
-                    last_message: newMessage.trim(),
-                    last_message_time: new Date().toISOString()
-                })
-                .eq('id', selectedConversation);
-
-            setNewMessage('');
-        } catch (err) {
-            setError('Mesaj gönderilirken bir hata oluştu.');
-            console.error('Error sending message:', err);
+        // Gerçek uygulamada API'den doğrulama yapılır
+        const token = localStorage.getItem('token');
+        if (!token) {
+            router.push('/login?redirect=/messages');
+            return;
         }
+        setIsAuthenticated(true);
+        setIsLoading(false);
+    }, [router]);
+
+    // Örnek kullanıcı verileri (gerçekte API'den gelir)
+    useEffect(() => {
+        const mockContacts = [
+            { id: 2, name: 'Mehmet Demir', avatar: '/images/avatars/avatar-1.jpg', lastMessage: 'Merhaba, projeniz hakkında konuşabilir miyiz?', lastMessageTime: '10:30', unreadCount: 2, isOnline: true },
+            { id: 3, name: 'Zeynep Kaya', avatar: '/images/avatars/avatar-2.jpg', lastMessage: 'Teklif için teşekkürler, düşüneceğim.', lastMessageTime: 'Dün', unreadCount: 0, isOnline: false },
+            { id: 4, name: 'Emre Yılmaz', avatar: '/images/avatars/avatar-3.jpg', lastMessage: 'Proje tamamlandı, son dosyaları gönderiyorum.', lastMessageTime: 'Pazartesi', unreadCount: 0, isOnline: true },
+            { id: 5, name: 'Ayşe Öztürk', avatar: '/images/avatars/avatar-4.jpg', lastMessage: 'Revizyon taleplerinizi aldım, bugün tamamlayacağım.', lastMessageTime: '23/04', unreadCount: 0, isOnline: false },
+            { id: 6, name: 'Can Kaya', avatar: '/images/avatars/avatar-5.jpg', lastMessage: 'Fiyat teklifinizi kabul ediyorum.', lastMessageTime: '18/04', unreadCount: 1, isOnline: true },
+        ];
+
+        setContacts(mockContacts);
+        setFilteredContacts(mockContacts);
+
+        // İlk kişiyi seç
+        if (mockContacts.length > 0 && !selectedUserId) {
+            setSelectedUserId(mockContacts[0].id);
+        }
+    }, [selectedUserId]);
+
+    // Kişi arama işlevi
+    useEffect(() => {
+        if (searchTerm.trim() === '') {
+            setFilteredContacts(contacts);
+        } else {
+            const filtered = contacts.filter(contact =>
+                contact.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            setFilteredContacts(filtered);
+        }
+    }, [searchTerm, contacts]);
+
+    // Seçili kullanıcı değiştiğinde mesajları yükle
+    useEffect(() => {
+        if (selectedUserId) {
+            // Gerçek uygulamada API'den mesajlar alınır
+            const mockMessages = [
+                { id: 1, senderId: currentUserId, receiverId: selectedUserId, content: 'Merhaba, nasılsınız?', timestamp: '10:20', isRead: true },
+                { id: 2, senderId: selectedUserId, receiverId: currentUserId, content: 'İyiyim teşekkürler, siz nasılsınız?', timestamp: '10:22', isRead: true },
+                { id: 3, senderId: currentUserId, receiverId: selectedUserId, content: 'Ben de iyiyim. Projeniz hakkında konuşabilir miyiz?', timestamp: '10:25', isRead: true },
+                { id: 4, senderId: selectedUserId, receiverId: currentUserId, content: 'Tabii ki, hangi proje hakkında bilgi almak istiyorsunuz?', timestamp: '10:28', isRead: true },
+                { id: 5, senderId: currentUserId, receiverId: selectedUserId, content: 'Web sitesi tasarımı için paylaştığınız ilan hakkında detaylı bilgi almak istiyorum.', timestamp: '10:30', isRead: true },
+                { id: 6, senderId: selectedUserId, receiverId: currentUserId, content: 'Elbette, site için responsive bir tasarım düşünüyorum. Mobil uyumlu ve modern bir arayüz olacak.', timestamp: '10:32', isRead: false },
+            ];
+
+            setMessages(mockMessages);
+
+            // Okunmamış mesajları okundu olarak işaretle
+            const updatedContacts = contacts.map(contact => {
+                if (contact.id === selectedUserId) {
+                    return { ...contact, unreadCount: 0 };
+                }
+                return contact;
+            });
+
+            setContacts(updatedContacts);
+            setFilteredContacts(updatedContacts);
+        }
+    }, [selectedUserId, contacts, currentUserId]);
+
+    // Mesaj gönderme
+    const handleSendMessage = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (message.trim() === '' || !selectedUserId) return;
+
+        // Yeni mesaj oluştur
+        const newMessage: Message = {
+            id: messages.length + 1,
+            senderId: currentUserId,
+            receiverId: selectedUserId,
+            content: message,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isRead: false,
+        };
+
+        // Mesajları güncelle
+        setMessages([...messages, newMessage]);
+
+        // İlgili kişinin son mesajını güncelle
+        const updatedContacts = contacts.map(contact => {
+            if (contact.id === selectedUserId) {
+                return {
+                    ...contact,
+                    lastMessage: message,
+                    lastMessageTime: 'Şimdi',
+                };
+            }
+            return contact;
+        });
+
+        setContacts(updatedContacts);
+        setFilteredContacts(
+            searchTerm.trim() === ''
+                ? updatedContacts
+                : updatedContacts.filter(contact =>
+                    contact.name.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+        );
+
+        // Mesaj kutusunu temizle
+        setMessage('');
     };
 
-    // Oturum kontrolü
-    if (status === 'loading' || isLoading) {
-        return <div>Yükleniyor...</div>;
+    // Mesajlar yüklendiğinde otomatik olarak en altta konumlan
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        );
     }
 
-    if (!session) {
-        router.push('/auth/login');
-        return null;
+    if (!isAuthenticated) {
+        return null; // Yönlendirme yapılıyor, içerik gösterme
     }
+
+    const selectedUser = contacts.find(c => c.id === selectedUserId);
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <>
             <Head>
-                <title>Mesajlar | Freelanza</title>
-                <meta name="description" content="Mesajlarınızı yönetin" />
+                <title>Mesajlar - Freelanza</title>
+                <meta name="description" content="Freelanza mesajlaşma sistemi" />
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
             </Head>
 
-            <Header />
+            <div className="flex flex-col min-h-screen">
+                <Header />
 
-            <main className="flex-grow bg-gray-50 py-12">
-                <div className="container mx-auto px-4">
-                    <div className="bg-white rounded-lg shadow-sm">
-                        <div className="grid grid-cols-1 md:grid-cols-3">
-                            {/* Konuşmalar listesi */}
-                            <div className="border-r">
-                                <div className="p-4 border-b">
-                                    <h1 className="text-xl font-semibold text-gray-900">
-                                        Mesajlar
-                                    </h1>
-                                </div>
-                                <div className="divide-y overflow-y-auto" style={{ maxHeight: '600px' }}>
-                                    {conversations.map((conversation) => (
-                                        <button
-                                            key={conversation.id}
-                                            onClick={() => setSelectedConversation(conversation.id)}
-                                            className={`w-full p-4 text-left hover:bg-gray-50 ${selectedConversation === conversation.id ? 'bg-blue-50' : ''
-                                                }`}
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className="font-medium text-gray-900">
-                                                        {conversation.other_user.name}
-                                                    </h3>
-                                                    <p className="text-sm text-gray-600 mt-1">
-                                                        {conversation.last_message}
-                                                    </p>
-                                                </div>
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-xs text-gray-500">
-                                                        {new Date(conversation.last_message_time).toLocaleDateString('tr-TR')}
-                                                    </span>
-                                                    {conversation.unread_count > 0 && (
-                                                        <span className="mt-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                                            {conversation.unread_count}
-                                                        </span>
-                                                    )}
-                                                </div>
+                <main className="flex-grow bg-gray-50 py-6">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                            <div className="flex flex-col md:flex-row h-[calc(100vh-200px)]">
+                                {/* Sol Kısım - Kişi Listesi */}
+                                <div className="w-full md:w-1/3 border-r border-gray-200 bg-white">
+                                    <div className="p-4 border-b border-gray-200">
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i className="fas fa-search text-gray-400"></i>
                                             </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Mesajlar */}
-                            <div className="md:col-span-2">
-                                {selectedConversation ? (
-                                    <div className="flex flex-col h-full" style={{ height: '600px' }}>
-                                        <div className="p-4 border-b">
-                                            <h2 className="font-medium text-gray-900">
-                                                {conversations.find(c => c.id === selectedConversation)?.other_user.name}
-                                            </h2>
+                                            <input
+                                                type="text"
+                                                className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-3 py-2 sm:text-sm border-gray-300 rounded-md"
+                                                placeholder="Kişi ara..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                            />
                                         </div>
+                                    </div>
 
-                                        <div className="flex-grow overflow-y-auto p-4 space-y-4">
-                                            {messages.map((message) => (
-                                                <div
-                                                    key={message.id}
-                                                    className={`flex ${message.sender_id === session.user.id
-                                                            ? 'justify-end'
-                                                            : 'justify-start'
-                                                        }`}
-                                                >
-                                                    <div
-                                                        className={`max-w-[70%] px-4 py-2 rounded-lg ${message.sender_id === session.user.id
-                                                                ? 'bg-blue-600 text-white'
-                                                                : 'bg-gray-100 text-gray-900'
+                                    <div className="overflow-y-auto h-full pb-16">
+                                        {filteredContacts.length === 0 ? (
+                                            <div className="text-center p-6 text-gray-500">
+                                                Kişi bulunamadı
+                                            </div>
+                                        ) : (
+                                            <ul className="divide-y divide-gray-200">
+                                                {filteredContacts.map((contact) => (
+                                                    <li
+                                                        key={contact.id}
+                                                        onClick={() => setSelectedUserId(contact.id)}
+                                                        className={`cursor-pointer hover:bg-gray-50 ${selectedUserId === contact.id ? 'bg-blue-50' : ''
                                                             }`}
                                                     >
-                                                        <p>{message.content}</p>
-                                                        <span className={`text-xs mt-1 block ${message.sender_id === session.user.id
-                                                                ? 'text-blue-100'
-                                                                : 'text-gray-500'
-                                                            }`}>
-                                                            {new Date(message.created_at).toLocaleTimeString('tr-TR')}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            <div ref={messagesEndRef} />
-                                        </div>
+                                                        <div className="px-4 py-3 flex items-center">
+                                                            <div className="relative">
+                                                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                                                                    {contact.avatar ? (
+                                                                        <Image
+                                                                            src={contact.avatar}
+                                                                            alt={contact.name}
+                                                                            width={40}
+                                                                            height={40}
+                                                                            className="h-full w-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="text-gray-500 text-lg font-semibold">
+                                                                            {contact.name.charAt(0)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {contact.isOnline && (
+                                                                    <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white"></span>
+                                                                )}
+                                                            </div>
+                                                            <div className="ml-3 flex-1 min-w-0">
+                                                                <div className="flex items-center justify-between">
+                                                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                                                        {contact.name}
+                                                                    </p>
+                                                                    <p className="text-xs text-gray-500">
+                                                                        {contact.lastMessageTime}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex items-center justify-between mt-1">
+                                                                    <p className="text-xs text-gray-500 truncate">
+                                                                        {contact.lastMessage}
+                                                                    </p>
+                                                                    {contact.unreadCount && contact.unreadCount > 0 ? (
+                                                                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-600 text-xs font-medium text-white">
+                                                                            {contact.unreadCount}
+                                                                        </span>
+                                                                    ) : null}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </div>
 
-                                        <form onSubmit={handleSendMessage} className="p-4 border-t">
-                                            <div className="flex space-x-4">
-                                                <input
-                                                    type="text"
-                                                    value={newMessage}
-                                                    onChange={(e) => setNewMessage(e.target.value)}
-                                                    placeholder="Mesajınızı yazın..."
-                                                    className="flex-grow px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                />
-                                                <button
-                                                    type="submit"
-                                                    disabled={!newMessage.trim()}
-                                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                                                >
-                                                    Gönder
-                                                </button>
+                                {/* Sağ Kısım - Mesaj İçeriği */}
+                                <div className="w-full md:w-2/3 flex flex-col bg-gray-50">
+                                    {selectedUserId ? (
+                                        <>
+                                            {/* Seçili kullanıcı başlığı */}
+                                            <div className="p-3 border-b border-gray-200 bg-white flex items-center">
+                                                <div className="relative mr-3">
+                                                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                                                        {selectedUser?.avatar ? (
+                                                            <Image
+                                                                src={selectedUser.avatar}
+                                                                alt={selectedUser.name}
+                                                                width={40}
+                                                                height={40}
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-gray-500 text-lg font-semibold">
+                                                                {selectedUser?.name.charAt(0)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {selectedUser?.isOnline && (
+                                                        <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white"></span>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-sm font-medium text-gray-900">{selectedUser?.name}</h2>
+                                                    <p className="text-xs text-gray-500">
+                                                        {selectedUser?.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
+                                                    </p>
+                                                </div>
+                                                <div className="ml-auto">
+                                                    <Link href={`/profile/${selectedUserId}`} className="text-blue-600 hover:text-blue-800 text-sm">
+                                                        Profili Görüntüle
+                                                    </Link>
+                                                </div>
                                             </div>
-                                        </form>
-                                    </div>
-                                ) : (
-                                    <div className="h-full flex items-center justify-center text-gray-500">
-                                        Bir konuşma seçin
-                                    </div>
-                                )}
+
+                                            {/* Mesaj içeriği */}
+                                            <div className="flex-grow overflow-y-auto p-4">
+                                                <div className="space-y-4">
+                                                    {messages.map((msg) => (
+                                                        <div
+                                                            key={msg.id}
+                                                            className={`flex ${msg.senderId === currentUserId ? 'justify-end' : 'justify-start'
+                                                                }`}
+                                                        >
+                                                            <div
+                                                                className={`max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl px-4 py-2 rounded-lg ${msg.senderId === currentUserId
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white text-gray-800 border border-gray-200'
+                                                                    }`}
+                                                            >
+                                                                <p className="text-sm">{msg.content}</p>
+                                                                <div
+                                                                    className={`text-xs mt-1 ${msg.senderId === currentUserId ? 'text-blue-100' : 'text-gray-500'
+                                                                        } flex justify-end items-center`}
+                                                                >
+                                                                    {msg.timestamp}
+                                                                    {msg.senderId === currentUserId && (
+                                                                        <span className="ml-1">
+                                                                            {msg.isRead ? (
+                                                                                <i className="fas fa-check-double"></i>
+                                                                            ) : (
+                                                                                <i className="fas fa-check"></i>
+                                                                            )}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    <div ref={messagesEndRef} />
+                                                </div>
+                                            </div>
+
+                                            {/* Mesaj gönderme formu */}
+                                            <div className="p-3 border-t border-gray-200 bg-white">
+                                                <form onSubmit={handleSendMessage} className="flex space-x-2">
+                                                    <div className="flex-grow">
+                                                        <input
+                                                            type="text"
+                                                            className="focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                                                            placeholder="Mesajınızı yazın..."
+                                                            value={message}
+                                                            onChange={(e) => setMessage(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="submit"
+                                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                    >
+                                                        <i className="fas fa-paper-plane mr-1"></i>
+                                                        Gönder
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex-grow flex items-center justify-center">
+                                            <div className="text-center p-6">
+                                                <div className="text-gray-400 text-5xl mb-4">
+                                                    <i className="far fa-comments"></i>
+                                                </div>
+                                                <h3 className="text-xl font-medium text-gray-700 mb-1">Mesajlarınız</h3>
+                                                <p className="text-gray-500">
+                                                    Mesajlaşmak için sol taraftan bir kişi seçin veya
+                                                    <Link href="/freelancers" className="text-blue-600 hover:text-blue-800 ml-1">
+                                                        yeni bir freelancer bulun
+                                                    </Link>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </main>
+                </main>
 
-            <Footer />
-        </div>
+                <Footer />
+            </div>
+        </>
     );
-};
-
-export default MessagesPage; 
+} 

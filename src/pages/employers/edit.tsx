@@ -6,6 +6,18 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/lib/supabase';
 
+interface EmployerProfile {
+    id: string;
+    user_id: string;
+    company_name: string;
+    company_size: string;
+    industry: string;
+    website: string | null;
+    description: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
 interface ProfileFormData {
     company_name: string;
     company_size: string;
@@ -80,9 +92,9 @@ const EditProfilePage: React.FC = () => {
                 .from('employer_profiles')
                 .select('id')
                 .eq('user_id', session.user.id)
-                .single();
+                .single() as { data: Pick<EmployerProfile, 'id'> | null };
 
-            let result;
+            let result: { data: EmployerProfile[] | null; error: any };
             if (existingProfile) {
                 // Profili güncelle
                 result = await supabase
@@ -113,7 +125,11 @@ const EditProfilePage: React.FC = () => {
             if (result.error) throw result.error;
 
             // Başarılı güncelleme sonrası profil sayfasına yönlendir
-            router.push(`/employers/${existingProfile?.id || result.data[0].id}`);
+            const profileId = existingProfile?.id || result.data?.[0]?.id;
+            if (!profileId) {
+                throw new Error('Profil ID bulunamadı');
+            }
+            router.push(`/employers/${profileId}`);
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Bir hata oluştu');
         } finally {

@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabase';
 
 interface SearchFilters {
+    [key: string]: string | number | string[] | undefined;
     category?: string;
     location?: string;
     type?: string;
@@ -53,7 +54,7 @@ const Search: React.FC = () => {
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
 
-        const query = {
+        const query: { [key: string]: any } = {
             ...router.query,
             q: searchTerm,
             ...filters,
